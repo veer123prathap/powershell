@@ -1,39 +1,36 @@
-    def get_Datadog_Metric(self, query_start_time, query_end_time, query):
-        try:
-            metric_url = os.environ["DD_SERVICE_URL"] + "/v1/query?from=" + str(query_start_time) + "&to=" + str(query_end_time) + "&query=" + query
+def get_Datadog_Metric(self, query_start_time, query_end_time, query):    # Defining function "get_Datadog_Metric"
+        try:    # try block
+            metric_url = os.environ["DD_SERVICE_URL"] + "/v1/query?from=" + str(query_start_time) + "&to=" + str(query_end_time) + "&query=" + query    # Concatenate the strings and store in "metric_url"
+            headers = {}    # Initialize empty dictionary
+            headers["Content-Type"] = "application/json"    # Add key value pair in dictionary
+            headers["Accept"] = "application/json"    # Add key value pair in dictionary
+            headers["Authorization"] = "Basic " + os.environ["EB2B_EVT_HEADER"]    # Add key value pair in dictionary
+            headers["DD-API-KEY"] = "7cb5c3513"    # Add key value pair in dictionary
+            headers["DD-APPLICATION-KEY"] = os.environ["DATADOG_APPKEY"]    # Add key value pair in dictionary
+            response = requests.get(metric_url, headers=headers, verify=False)    # get the response of requests
+            response.raise_for_status()    # Raise for status
+            if ("x-ratelimit-limit" in response.headers) and ("x-ratelimit-remaining" in response.headers) and ("x-ratelimit-reset" in response.headers):    # If condition
+                limit = int(response.headers["x-ratelimit-limit"])    # Initialize limit variable
+                remaining = int(response.headers["x-ratelimit-remaining"])    # Initialize remaining variable
+                reset = int(response.headers["x-ratelimit-reset"])    # Initialize reset variable
+                if remaining < limit/5:    # check if condition
+                    sleep_time = reset + 5    # Initialize sleep_time variable
+                    self.log.info("Rate limit warning [" + str(remaining) + "remaining of " + str(limit) + "]. Sleeping for" + str(sleep_time) + "seconds.. ")    # print message on console
+                    time.sleep(sleep_time)    # sleep for given time
+            if response.status_code == 200:    # check if condition
+                return response.text    # return response text
+            else:    # else block
+                raise Exception("Datadog API request failed: {}".format(response.status_code))    # Raise exception
+        except requests.exceptions.HTTPError as error:    # catch block
+            self.log.error("HTTP_Error" + str(error.response.status_code))    # print message on console
+            return ""    # return empty string
+        except requests.exceptions.RequestException as error:    # catch block
+            self.log.error("Request_Exception-" + str(error))    # print message on console
+            return ""    # return empty string
+        except Exception as error:    # catch block
+            self.log.error("Exception-" + str(error))    # print message on console
+            return ""    # return empty string
 
-            headers = {}
-            headers["Content-Type"] = "application/json"
-            headers["Accept"] = "application/json"
-            headers["Authorization"] = "Basic " + os.environ["EB2B_EVT_HEADER"]
-            headers["DD-API-KEY"] = "7cb5c3513"
-            headers["DD-APPLICATION-KEY"] = os.environ["DATADOG_APPKEY"]
-
-            response = requests.get(metric_url, headers=headers, verify=False)
-            response.raise_for_status()
-            if ("x-ratelimit-limit" in response.headers) and ("x-ratelimit-remaining" in response.headers) and ("x-ratelimit-reset" in response.headers):
-                limit = int(response.headers["x-ratelimit-limit"])
-                remaining = int(response.headers["x-ratelimit-remaining"])
-                reset = int(response.headers["x-ratelimit-reset"])
-
-                if remaining < limit/5:
-                    sleep_time = reset + 5
-                    self.log.info("Rate limit warning [" + str(remaining) + "remaining of " + str(limit) + "]. Sleeping for" + str(sleep_time) + "seconds.. ")
-                    time.sleep(sleep_time)
-            if response.status_code == 200:
-                return response.text
-            else:
-                raise Exception("Datadog API request failed: {}".format(response.status_code))
-        
-        except requests.exceptions.HTTPError as error:
-            self.log.error("HTTP_Error" + str(error.response.status_code))
-            return ""
-        except requests.exceptions.RequestException as error:
-            self.log.error("Request_Exception-" + str(error))
-            return ""
-        except Exception as error:
-            self.log.error("Exception-" + str(error))
-            return ""
 def post_to_SREPushGateway(datadog_json, modified_json, flag):    # Defining function "post_to_SREPushGateway"
     global text_payload    # Declaring global variable text_payload
     try:    # try block
