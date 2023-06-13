@@ -1,0 +1,245 @@
+    def get_Datadog_Metric(self, query_start_time, query_end_time, query):
+        try:
+            metric_url = os.environ["DD_SERVICE_URL"] + "/v1/query?from=" + str(query_start_time) + "&to=" + str(query_end_time) + "&query=" + query
+
+            headers = {}
+            headers["Content-Type"] = "application/json"
+            headers["Accept"] = "application/json"
+            headers["Authorization"] = "Basic " + os.environ["EB2B_EVT_HEADER"]
+            headers["DD-API-KEY"] = "7cb5c3513"
+            headers["DD-APPLICATION-KEY"] = os.environ["DATADOG_APPKEY"]
+
+            response = requests.get(metric_url, headers=headers, verify=False)
+            response.raise_for_status()
+            if ("x-ratelimit-limit" in response.headers) and ("x-ratelimit-remaining" in response.headers) and ("x-ratelimit-reset" in response.headers):
+                limit = int(response.headers["x-ratelimit-limit"])
+                remaining = int(response.headers["x-ratelimit-remaining"])
+                reset = int(response.headers["x-ratelimit-reset"])
+
+                if remaining < limit/5:
+                    sleep_time = reset + 5
+                    self.log.info("Rate limit warning [" + str(remaining) + "remaining of " + str(limit) + "]. Sleeping for" + str(sleep_time) + "seconds.. ")
+                    time.sleep(sleep_time)
+            if response.status_code == 200:
+                return response.text
+            else:
+                raise Exception("Datadog API request failed: {}".format(response.status_code))
+        
+        except requests.exceptions.HTTPError as error:
+            self.log.error("HTTP_Error" + str(error.response.status_code))
+            return ""
+        except requests.exceptions.RequestException as error:
+            self.log.error("Request_Exception-" + str(error))
+            return ""
+        except Exception as error:
+            self.log.error("Exception-" + str(error))
+            return ""
+def post_to_SREPushGateway(datadog_json, modified_json, flag):    # Defining function "post_to_SREPushGateway"
+    global text_payload    # Declaring global variable text_payload
+    try:    # try block
+        metricname = datadog_json["metricname"]    # Assign the value of metricname from datadog_json
+        metricdescription = metricname.replace(" ", "_").capitalize()    # Replace the space with "_" and capitalize the first letter
+        sloid = datadog_json["sloId"]    # Assign the value of sloid from datadog_json
+        status = datadog_json["status"]    # Assign the value of status from datadog_json
+        metricvalue = datadog_json["series"][0]["pointlist"][0][1]    # Assign the value of metricvalue from datadog_json
+        failure_list = ['4XX_failure_count', '5XX_failure_count']    # Declare the list "failure_list"
+        threshold = datadog_json["threshold"]    # Assign the value of threshold from datadog_json
+        flag_up = flag + 1    # Increment value of flag by 1
+        if sloid not in seen_ids and metricname in failure_list:    # Check if sloid and metricname is in seen_ids and failure_list
+            print("coming in to post for failure")    # Print message on console
+            datadog_json["metricname"] = "failure_slo_total_count"    # Assign the value "failure_slo_total_count" to metricname
+            modified_json.append(datadog_json)    # Append datadog_json to modified_json
+            print(modified_json)    # Print the value of modified_json
+        elif metricname in failure_list:    # Check if metricname is in failure_list
+            matching_dataset = next(    # Match the dataset from modified_json
+                (datadog_json for dataset in modified_json if datadog_json["sloId"] == dataset["sloId"]), None)
+            if matching_dataset is not None:    # Check if matching_dataset is not null
+                print("summing")    # Print message on console
+                matching_dataset["metricname"] = "failure_slo_total_count"    # Assign "failure_slo_total_count" to metricname
+                print(modified_json[0]['series'][0]['pointlist'][int(0)][1])    # Print the value
+                print(datadog_json["series"][0]["pointlist"][0][1])    # Print the value
+                modified_json[0]['series'][0]['pointlist'][int(0)][1] += datadog_json["series"][0]["pointlist"][0][1]    # Add the values and assign to modified_json
+                print(modified_json)    # Print the value of modified_json
+
+        if sloid not in seen_ids and datadog_json["metricname"] != "availability_slo_total_count":    # Check if sloid is not in seen_ids and metricname is not "availability_slo_total_count"
+            seen_ids.add(sloid)    # Add the value to seen_ids
+            print(seen_ids)    # Print the value of seen_ids
+
+        if metricname == "availability_slo_total_count":    # Check if metricname is "availability_slo_total_count"
+            text_payload = "# Type " + metricname + "guage\n" + \    # Assign the value to text_payload
+                           "# Help " + metricname + " " + metricdescription + " guage\n" + \    # Assign the value to text_payload
+                           metricname + "{sloId=\"" + sloid + "\", status=\"" + status + "\"} " + str(
+                metricvalue) + "\n" + \    # Assign the value to text_payload
+                           "# EOF\n"    # Assign the value to text_payload
+            print(text_payload)    # Print the value of text_payload
+        if len(test_metrics) == flag_up:    # Check if length of test_metrics is equal to flag_up
+            for data in modified_json:    # Iterate through modified_json
+                total_count = 0.0    # Initialize variable total_count
+                failure_count = 0.0    # Initialize variable failure_count
+                if data["series"][0]["pointlist"][0][1] != 0.0:    # Check if value is not equal to 0.0
+                    print("condition")    # Print message on console
+                    print(data["series"][0]["pointlist"][0][1])    # Print the value
+                    total_count = 1.0    # Initialize variable total_count with value 1.0
+                    if data["series"][0]["pointlist"][0][1] != 0.0 >= float(data["threshold"]):    # Check if value is not equal to 0.0 and greater than or equal to threshold
+                        failure_count = 1.0    # Initialize variable failure_count with value 1.0
+                print("finally to print failure")    # Print message on console
+                # text_payload = "# TYPE latency slo total count gauge \n" + \    # Assign the value to text_payload
+                #                "# HELP latency_slo_total count Latency slo total count gauge \n" + \    # Assign the value to text_payload
+                #                "latency_slo_total_count {sloId=\"" + data["sloId"] + "\", status=\"" + data[
+                #                    "status"] + "\"} " + str(
+                #     total_count) + "\n" + \    # Assign the value to text_payload
+                #                "# TYPE latency_slo_failure count gauge\n" + \    # Assign the value to text_payload
+                #                "# HELP latency_slo_failure_count Latency S1o failure count gauge \n" + \    # Assign the value to text_payload
+                #                "latency_slo_failure_count{sloId=\"" + data["sloId"] + "\", status=\"" + data[
+                #                    "status"] + "\"} " + str(
+                #     failure_count) + "\n" + \    # Assign the value to text_payload
+                #                "# EOF\n"    # Assign the value to text_payload
+                failure_payload = "# TYPE availability_failure_slo_count gauge\n" + \    # Assign the value to failure_payload
+                               "# HELP availability_failure_slo_count Latency S1o failure count gauge \n" + \    # Assign the value to failure_payload
+                               "availability_failure_slo_count{sloId=\"" + data["sloId"] + "\", status=\"" + data[
+                                   "status"] + "\"} " + str(
+                    failure_count) + "\n" + \    # Assign the value to failure_payload
+                               "# EOF\n"    # Assign the value to failure_payload
+                print(text_payload)    # Print the value of text_payload
+                print(failure_payload)    # Print the value of failure_payload
+
+        return ""    # Return an empty string
+
+    except requests.exceptions.HTTPError as error:    # Exception block
+        log.error("HTTP Error" + str(error.response.status_code))    # Print error message on console
+        return ""    # Return an empty string
+    except requests.exceptions.RequestException as error:    # Exception block
+        log.error("Request Exception - " + str(error))    # Print error message on console
+        return ""    # Return an empty string
+    except Exception as error:    # Exception block
+        log.error("Exception-------" + str(error))    # Print error message on console
+        return ""    # Return an empty string
+
+def main():    # main function    # Defining function "main"
+    metrics = test_metrics    # Initialize the variable metrics with test_metrics
+    initial_startup = True    # Boolean variable
+    # print("length of the metric")
+    # print(len(metrics))
+    while True:    # while loop
+
+
+        current_time = datetime.datetime.now()    # Get current time
+        log.info("current Time = " + current_time.strftime("%Y-%m-%d %H:%M:%S"))    # print current time on console
+
+        query_end_time = datetime.datetime.fromisoformat(current_time.strftime("%Y-%m-%d %H:%M:00"))    # Get end time
+        query_end_time = int(query_end_time.timestamp())    # Get timestamp of end time
+        log.info("query end Time =" + str(query_end_time))    # print end time on console
+
+
+        query_start_time = int(query_end_time - 60)    # Get start time
+        log.info("Query start time=" + str(query_start_time))    # print start time on console
+
+
+        sleep_util_time = int(query_end_time + 60)    # Calculate sleep time
+        log.info("sleep util time =" + str(sleep_util_time))    # Print sleep time on console
+        # print("clearing")
+        modified_json = []    # Initialize new list "modified_json"
+        modified_json.clear()    # Clear the list "modified_json"
+        seen_ids.clear()    # Clear the list "seen_ids"
+
+        if initial_startup:    # If block
+            initial_startup = False    # Make initial_startup = False
+
+        else:
+            for i in range(len(metrics)):    # for loop
+                # print("inside")
+                iquery_start_time = query_start_time - metrics[i][4]    # Calculate iquery_start_time
+
+                iquery_end_time = query_end_time - metrics[i][4] + metrics[i][5]    # Calculate iquery_end_time
+                dd_response_text = get_Datadog_Metric(iquery_start_time, iquery_end_time, metrics[i][6])    # Get response text from get_Datadog_Metric function
+                
+                if dd_response_text != "":    # If block
+                    dd_response_json = json.loads(dd_response_text)    # Convert response text in json format
+
+                    slo_id = json.loads("{\"sloId\":\"" + metrics[i][0] + "\"}")    # Get sloId from json
+                    status = json.loads("{\"status\":\"" + metrics[i][1] + "\"}")    # Get status from json
+                    metric_name = json.loads("{\"metricname\":\"" + metrics[i][2] + "\"}")    # Get metric name from json
+                    threshold = json.loads("{\"threshold\":\"" + str(metrics[i][3]) + "\"}")    # Get threshold from json
+                    dd_response_json.update(slo_id)    # Update sloId in json
+                    dd_response_json.update(status)    # Update status in json
+                    dd_response_json.update(metric_name)    # Update metric name in json
+                    dd_response_json.update(threshold)    # Update threshold in json
+                    print(dd_response_json)    # Print json on console
+                    print("main function after get")    # Print message on console
+                    if len(dd_response_json["series"]) == 0:    # If block
+                        dd_response_json["series"].append({"pointlist": [[+ iquery_start_time + 0.0, 0.0]]})    # Append points in json
+
+                    vector_response = post_to_SREPushGateway(dd_response_json, modified_json, i)    # Call post_to_SREPushGateway function and store result in vector_response
+
+                    print("")    # Print new line on console
+
+        sleep_seconds = sleep_util_time - int(datetime.datetime.now().timestamp())    # Calculate sleep_seconds
+        if sleep_seconds > 0:    # If block
+            log.info("Sleeping for " + str(sleep_seconds) + " seconds")    # Print message on console
+            print("")    # Print new line on console
+            print("")    # Print new line on console
+            time.sleep(sleep_seconds)    # Sleep for sleep_seconds
+
+
+if __name__ == "__main__":    # If block
+    l = jsonlogger.jsonlogger("datadog_slo_extract.py")    # Initialize jsonlogger class
+    main()    # Call main function
+
+
+---------------------------------------------------------------------------------------------------------------------------------------------------------
+
+import datetime    # import datetime library
+import json    # import json library
+import sys    # import sys library
+
+class jsonlogger:    # jsonlogger class
+    TIMESTAMP = "@timestamp"    # Initialize TIMESTAMP variable
+    LOGLEVEL = "loglevel"    # Initialize LOGLEVEL variable
+    LEVEL_DEBUG = "DEBUG"    # Initialize LEVEL_DEBUG variable
+    LEVEL_INFO = "INFO"    # Initialize LEVEL_INFO variable
+    LEVEL_ERROR = "ERROR"    # Initialize LEVEL_ERROR variable
+    PROCESSNAME = "process.name"    # Initialize PROCESSNAME variable
+    MESSAGE = "message"    # Initialize MESSAGE variable
+
+    def __init__(self, processname):    # init function
+        self.msg = {}    # Initialize msg variable
+
+        # Elasticsearch expects dates to be in IS08601 format converted to UTC time (2020-11-25T18:16:45.1842); we'll need to trim 3 microseconds to convert to
+        self.msg[self.TIMESTAMP] = datetime.datetime.utcnow().isoformat()[:-3] + "Z"    # Assign current timestamp to TIMESTAMP key in msg dictionary
+        self.msg[self.LOGEVEL]    # Assign LOGEVEL key to msg variable
+        self.LEVEL_INFO    # Assign LEVEL_INFO value to LOGEVEL key in msg dictionary
+        self.msg[self.PROCESSNAME] = processname    # Assign processname to PROCESSNAME key in msg dictionary
+        self.msg[self.MESSAGE]  = "no message yet"    # Assign "no message yet" to MESSAGE key in msg dictionary
+
+    def print(self, message):    # print function
+        self.msg[self.MESSAGE] = message    # Assign message parameter value to MESSAGE key in msg dictionary
+        self.updatetime()    # Call updatetime function
+        try:    # try block
+            str = json.dumps(self.msg)    # Assign self.msg to str variable
+        except:    # except block
+            str = "Logger error converting message to json"    # Assign Logger error converting message to json to str variable
+        sys.stdout.write(str + "\r\n")    # Write str variable value to console
+        sys.stdout.flush()    # Flush the console
+    def info(self, message):    # info function
+        self.msg[self.LOGLEVEL] = self.LEVEL_INFO    # Assign LEVEL_INFO value to LOGLEVEL key in msg dictionary
+        self.print(message)    # Call print function and pass message parameter
+    def debug(self, message):    # debug function
+        self.msg[self.LOGLEVEL] = self.LEVEL_DEBUG    # Assign LEVEL_DEBUG value to LOGLEVEL key in msg dictionary
+        self.print (message)    # Call print function and pass message parameter
+
+    def error (self, message):    # error function
+        self.msg[self.LOGLEVEL] = self.LEVEL_ERROR    # Assign LEVEL_ERROR value to LOGLEVEL key in msg dictionary
+        self.print (message)    # Call print function and pass message parameter
+    def updatetime(self):
+
+
+        # Elasticsearch expects dates to be in IS08601 format converted to UTC time (2020-11-25T18:16:45.184Z); we 'll need to
+        self.msg[self.TIMESTAMP] = datetime.datetime.utcnow().isoformat()[:-3] + "z"    # Assign current timestamp to TIMESTAMP key in msg dictionary
+def main():
+
+    l = jsonlogger("jsonlogger.py")    # Initialize l variable with jsonlogger class and pass jsonlogger.py as argument
+    l.info("This is a test from jsonlogger")    # Call info function and pass This is a test from jsonlogger as argument
+
+if __name__ == "__main__":    # __main__ block
+    main()    # Call main function
+
