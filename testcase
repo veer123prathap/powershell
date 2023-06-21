@@ -1,0 +1,56 @@
+import pytest
+import mock
+from src.datadog_slo_extract import DatadogSloExtract
+
+
+@pytest.fixture
+def mock_get():
+    with mock.patch("requests.get") as mock_get:
+        yield mock_get
+
+
+@pytest.fixture
+def mock_post():
+    with mock.patch("requests.post") as mock_post:
+        yield mock_post
+
+
+def test_get_Datadog_Metric_empty_response(mock_get):
+    mock_get.return_value.text = ""
+    datadog_extract = DatadogSloExtract()
+    response_text = datadog_extract.get_Datadog_Metric(0, 1, "")
+    assert response_text == ""
+
+
+def test_get_Datadog_Metric_valid_response(mock_get):
+    mock_get.return_value.text = "{}"
+    datadog_extract = DatadogSloExtract()
+    response_text = datadog_extract.get_Datadog_Metric(0, 1, "")
+    assert response_text == ""
+
+
+def test_post_to_SREPushGateway_empty_json(mock_post):
+    datadog_extract = DatadogSloExtract()
+    modified_json = []
+    mock_post.return_value.text = ""
+    vector_response = datadog_extract.post_to_SREPushGateway({}, modified_json, 0)
+    assert vector_response == ""
+
+
+def test_post_to_SREPushGateway_valid_json(mock_post):
+    datadog_extract = DatadogSloExtract()
+    modified_json = []
+    datadog_json = {
+        "metricname": "availability_slo_total_count",
+        "series": [{"pointlist": [[1646429200, 1.0]]}],
+        "sloId": "12344fsaf234234",
+        "status": "PENDING",
+        "threshold": 100,
+    }
+    mock_post.return_value.text = ""
+    vector_response = datadog_extract.post_to_SREPushGateway(datadog_json, modified_json, 0)
+    assert vector_response == ""
+
+
+if __name__ == "__main__":
+    pytest.main()
