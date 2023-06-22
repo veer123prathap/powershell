@@ -1,0 +1,41 @@
+import pytest
+import datetime
+import json
+import sys
+from src.jsonlogger import jsonlogger
+
+
+class TestYourLoggerClass:
+    def setup_method(self, method):
+        # Initialize the logger instance with a process name
+        self.logger = jsonlogger("Process1")
+
+    def test_print_method(self):
+        message = "This is a test message."
+        self.logger.print(message)
+        # Assert the expected behavior of the print method
+
+    def test_info_method(self):
+        message = "This is an info message."
+        self.logger.info(message)
+        # Assert the expected behavior of the info method
+
+    def test_debug_method(self):
+        message = "This is a debug message."
+        self.logger.debug(message)
+        # Assert the expected behavior of the debug method
+
+    def test_error_method(self):
+        message = "This is an error message."
+        self.logger.error(message)
+        # Assert the expected behavior of the error method
+
+    def test_updatetime_method(self):
+        # Manually set the timestamp before calling the updatetime method
+        initial_timestamp = self.logger.msg[jsonlogger.TIMESTAMP]
+        self.logger.updatetime()
+        # Assert the expected behavior of the updatetime method
+
+
+if __name__ == "__main__":
+    pytest.main()
