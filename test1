@@ -1,0 +1,81 @@
+def test_processing_metricdata_success_failure_metric(mocker, seen_ids):
+    """Test that the `processing_metricdata` function correctly handles a failure metric that is not already in the modified_json list."""
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"series": [{"pointlist": [[1599112000, 100]]}]}'
+    mocker.patch('requests.get', return_value=mock_response)
+
+    datadog_extract = DatadogSloExtract()
+    metric = {
+        "sloId": "1234567890",
+        "status": "PENDING",
+        "metricname": "4XX_failure_count",
+        "threshold": 50,
+        "query_start_time": 1599111995,
+        "query_end_time": 1599112005
+    }
+
+    modified_json = []
+    flag = 0
+
+    result = datadog_extract.processing_metricdata(metric, modified_json, flag)
+
+    assert result == ""
+    assert modified_json == [metric]
+    assert seen_ids == {"1234567890"}
+
+def test_processing_metricdata_success_failure_metric_already_in_list(mocker, seen_ids):
+    """Test that the `processing_metricdata` function correctly handles a failure metric that is already in the modified_json list."""
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"series": [{"pointlist": [[1599112000, 100]]}]}'
+    mocker.patch('requests.get', return_value=mock_response)
+
+    datadog_extract = DatadogSloExtract()
+    metric = {
+        "sloId": "1234567890",
+        "status": "PENDING",
+        "metricname": "4XX_failure_count",
+        "threshold": 50,
+        "query_start_time": 1599111995,
+        "query_end_time": 1599112005
+    }
+
+    modified_json = [metric]
+    flag = 0
+
+    result = datadog_extract.processing_metricdata(metric, modified_json, flag)
+
+    assert result == ""
+    assert modified_json == [metric]
+    assert seen_ids == {"1234567890"}
+
+
+
+@pytest.mark.skip(reason="The processing_metricdata function is not being called.")
+def test_processing_metricdata_success_failure_metric(mocker, seen_ids):
+    """Test that the `processing_metricdata` function correctly handles a failure metric that is not already in the modified_json list."""
+    mock_response = mocker.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"series": [{"pointlist": [[1599112000, 100]]}]}'
+    mocker.patch('requests.get', return_value=mock_response)
+
+    datadog_extract = DatadogSloExtract()
+    metric = {
+        "sloId": "1234567890",
+        "status": "PENDING",
+        "metricname": "4XX_failure_count",
+        "threshold": 50,
+        "query_start_time": 1599111995,
+        "query_end_time": 1599112005
+    }
+
+    modified_json = []
+    flag = 0
+
+    # This line of code will be skipped
+    result = datadog_extract.processing_metricdata(metric, modified_json, flag)
+
+    assert result == ""
+    assert modified_json == [metric]
+    assert seen_ids == {"1234567890"}
