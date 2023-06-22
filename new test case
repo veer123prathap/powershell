@@ -1,0 +1,85 @@
+import pytest
+from unittest import mock
+from src.datadog_slo_extract import DatadogSloExtract
+
+@pytest.fixture
+def mock_requests_get():
+    with mock.patch("src.datadog_slo_extract.requests.get") as mock_get:
+        yield mock_get
+
+@pytest.fixture
+def datadog_extract():
+    return DatadogSloExtract()
+
+def test_get_Datadog_Metric_success(mock_requests_get, datadog_extract):
+    # Mocking the response from requests.get
+    mock_response = mock.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"metric": "value"}'
+    mock_requests_get.return_value = mock_response
+
+    query_start_time = "123456"
+    query_end_time = "789012"
+    query = "example_query"
+
+    response = datadog_extract.get_Datadog_Metric(query_start_time, query_end_time, query)
+
+    assert response == '{"metric": "value"}'
+
+def test_get_Datadog_Metric_failure(mock_requests_get, datadog_extract):
+    # Mocking the response from requests.get
+    mock_response = mock.Mock()
+    mock_response.status_code = 500
+    mock_requests_get.return_value = mock_response
+
+    query_start_time = "123456"
+    query_end_time = "789012"
+    query = "example_query"
+
+    with pytest.raises(Exception):
+        datadog_extract.get_Datadog_Metric(query_start_time, query_end_time, query)
+
+def test_processing_metricdata(mock_requests_get, datadog_extract):
+    # Mocking the response from requests.get
+    mock_response = mock.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"metricname": "value", "sloId": "12345", "status": "PENDING", "series": [{"pointlist": [[123, 456]]}], "threshold": 500}'
+    mock_requests_get.return_value = mock_response
+
+    datadog_json = {
+        "metricname": "value",
+        "sloId": "12345",
+        "status": "PENDING",
+        "series": [{"pointlist": [[123, 456]]}],
+        "threshold": 500
+    }
+    modified_json = []
+    flag = 0
+
+    result = datadog_extract.processing_metricdata(datadog_json, modified_json, flag)
+
+    assert result == ""
+
+def test_post_to_SREPushGateway(mock_requests_get, datadog_extract):
+    # Mocking the response from requests.get
+    mock_response = mock.Mock()
+    mock_response.status_code = 200
+    mock_response.text = '{"metricname": "value", "sloId": "12345", "status": "PENDING", "series": [{"pointlist": [[123, 456]]}], "threshold": 500}'
+    mock_requests_get.return_value = mock_response
+
+    datadog_json = {
+        "metricname": "value",
+        "sloId": "12345",
+        "status": "PENDING",
+        "series": [{"pointlist": [[123, 456]]}],
+        "threshold": 500
+    }
+    modified_json = []
+    flag = 0
+
+    result = datadog_extract.post_to_SREPushGateway(datadog_json, modified_json, flag)
+
+    assert result == ""
+
+# Add more test cases as needed
+
