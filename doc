@@ -1,0 +1,366 @@
+import datetime
+import json
+import sys
+
+
+class jsonlogger:
+    """
+    This class is used for logging in json format.
+
+    Attributes
+    ----------
+    TIMESTAMP: str
+        Timestamp of log.
+    LOGLEVEL: str
+        Level of log.
+    LEVEL_DEBUG: str
+        Level debug.
+    LEVEL_INFO: str
+        Level info.
+    LEVEL_ERROR: str
+        Level error.
+    PROCESSNAME: str
+        name of process.
+    MESSAGE: str
+        message of log.
+    msg: dict
+        log message in dictionary format.
+
+    Methods
+    -------
+    __init__(self, processname)
+        Initialize the logger.
+
+    print(self, message)
+        print the message in json format.
+
+    info(self, message)
+        print the message in info level.
+
+    debug(self, message)
+        print the message in debug level.
+
+    error(self, message)
+        print the message in error level.
+
+    updatetime(self)
+        update the time of log.
+
+    """
+    TIMESTAMP = "@timestamp"
+    LOGLEVEL = "loglevel"
+    LEVEL_DEBUG = "DEBUG"
+    LEVEL_INFO = "INFO"
+    LEVEL_ERROR = "ERROR"
+    PROCESSNAME = "process.name"
+    MESSAGE = "message"
+
+    def __init__(self, processname: str):
+        """
+        Initialize the logger.
+
+        Parameters
+        ----------
+        processname: str
+            name of process.
+
+        """
+        self.msg = {
+            self.TIMESTAMP: datetime.datetime.utcnow().isoformat()[:-3] + "Z",
+            self.LOGLEVEL: self.LEVEL_INFO,
+            self.PROCESSNAME: processname,
+            self.MESSAGE: "no message yet"
+        }
+
+    def print(self, message: str) -> None:
+        """
+        print the message in json format.
+
+        Parameters
+        ----------
+        message: str
+            message of log.
+
+        Returns
+        -------
+        None
+
+        """
+        self.msg[self.MESSAGE] = message
+        self.updatetime()
+        try:
+            str = json.dumps(self.msg)
+        except:
+            str = "logger error"
+        sys.stdout.write(str + "\r\n")
+        sys.stdout.flush()
+
+    def info(self, message: str) -> None:
+        """
+        print the message in info level.
+
+        Parameters
+        ----------
+        message: str
+            message of log.
+
+        Returns
+        -------
+        None
+
+        """
+        self.msg[self.MESSAGE] = message
+        sys.stdout.write(json.dumps(self.msg) + "\r\n")
+        sys.stdout.flush()
+
+    def debug(self, message: str) -> None:
+        """
+        print the message in debug level.
+
+        Parameters
+        ----------
+        message: str
+            message of log.
+
+        Returns
+        -------
+        None
+
+        """
+        self.msg[self.LOGLEVEL] = self.LEVEL_DEBUG
+        self.info(message)
+
+    def error(self, message: str) -> None:
+        """
+        print the message in error level.
+
+        Parameters
+        ----------
+        message: str
+            message of log.
+
+        Returns
+        -------
+        None
+
+        """
+        self.msg[self.LOGLEVEL] = self.LEVEL_ERROR
+        self.info(message)
+
+    def updatetime(self) -> None:
+        """
+        update the time of log.
+
+        Returns
+        -------
+        None
+
+        """
+        self.msg[self.TIMESTAMP] = datetime.datetime.utcnow().isoformat()[:-3] + "z"
+def main() -> None:
+    """
+    Main function.
+
+    Returns
+    -------
+    None
+
+    """
+
+
+class DatadogSloExtract:
+    """
+    This class is used to extract the datadog metric.
+
+    Attributes
+    ----------
+
+    Methods
+    -------
+    get_Datadog_Metric(self, query_start_time: str, query_end_time: str, query: str) -> str
+        This function is used to extract the datadog metric.
+
+    """
+
+    def __init__(self):
+        pass
+
+    def get_Datadog_Metric(self, query_start_time: str, query_end_time: str, query: str) -> str:
+        """
+        This function is used to extract the datadog metric.
+
+        Parameters
+        ----------
+        query_start_time: str
+            Start time of the query.
+
+        query_end_time: str
+            End time of the query.
+
+        query: str
+            Query to be executed.
+
+        Returns
+        -------
+        str
+            Datadog metric.
+
+        """
+        try:
+            metric_url = "https://api.us5.datadoghq.com/api/v1/query?from={}&to={}&query={}".format(query_start_time,
+                                                                                                    query_end_time,
+                                                                                                    query)
+
+            headers = {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "DD-API-KEY": "7c85311808406284f5c80ce13",
+                "DD-APPLICATION-KEY": "c6de34f47084b456995"
+            }
+
+            response = requests.get(metric_url, headers=headers, verify=False)
+
+
+            if 'x-ratelimit-limit' in response.headers and 'x-ratelimit-remaining' in response.headers and 'x-ratelimit-reset' in response.headers:
+                limit = response.headers['x-ratelimit-limit']
+
+                remaining = int(response.headers['x-ratelimit-remaining'])
+
+                reset = int(response.headers["x-ratelimit-reset"])
+
+                if remaining < int(limit) / 5:
+                    time.sleep(reset + 5)
+            if response.status_code == 200:
+                return response.text
+            else:
+                raise Exception("Datadog API request failed: {}".format(response.status_code))
+        except requests.exceptions.HTTPError as error:
+            log.error("HTTP_Error" + str(error.response.status_code))
+            return ""
+        except requests.exceptions.RequestException as error:
+            log.error("Request_Exception-" + str(error))
+            return ""
+        except Exception as error:
+            log.error("Exception-" + str(error))
+            return ""
+
+
+def processing_metricdata(self, datadog_json: dict, modified_json: list, flag: int) -> str:
+    """
+    Processing the metric data.
+
+    Parameters
+    ----------
+    datadog_json: dict
+        Datadog Json Data.
+    modified_json: list
+        Modified Json Data.
+    flag: int
+        Flag to check whether to modify the json data.
+
+    Returns
+    -------
+    str
+        Returns empty string.
+
+    """
+    metricname = datadog_json["metricname"]
+    metricdescription = metricname.replace(" ", "_").capitalize()
+    sloid = datadog_json["sloId"]
+    status = datadog_json["status"]
+    metricvalue = datadog_json["series"][0]["pointlist"][0][1]
+    failure_list = ['4XX_failure_count', '5XX_failure_count']
+    threshold = datadog_json["threshold"]
+    flag_up = flag + 1
+    if sloid not in seen_ids and metricname in failure_list:
+        print("coming in to post for failure")
+        datadog_json["metricname"] = "failure_slo_total_count"
+        modified_json.append(datadog_json)
+        print(modified_json)
+    elif metricname in failure_list:
+        matching_dataset = next(
+            (datadog_json for dataset in modified_json if datadog_json["sloId"] == dataset["sloId"]), None)
+        if matching_dataset is not None:
+            print("summing")
+            matching_dataset["metricname"] = "failure_slo_total_count"
+            print(modified_json[0]['series'][0]['pointlist'][int(0)][1])
+            print(datadog_json["series"][0]["pointlist"][0][1])
+            modified_json[0]['series'][0]['pointlist'][int(0)][1] += datadog_json["series"][0]["pointlist"][0][1]
+            print(modified_json)
+
+    if sloid not in seen_ids and datadog_json["metricname"] != "availability_slo_total_count":
+        seen_ids.add(sloid)
+        print(seen_ids)
+    self.post_to_SREPushGateway(datadog_json, modified_json, flag_up)
+    return ""
+
+
+def post_to_SREPushGateway(self, datadog_json: dict, modified_json: list, flag: int) -> str:
+    """
+    Post the metric data to SREPushGateway.
+
+    Parameters
+    ----------
+    datadog_json: dict
+        Datadog Json Data.
+    modified_json: list
+        Modified Json Data.
+    flag: int
+        Flag to check whether to modify the json data.
+
+    Returns
+    -------
+    str
+        Returns empty string.
+
+    """
+    global text_payload
+    try:
+        metricname = datadog_json["metricname"]
+        metricdescription = metricname.replace(" ", "_").capitalize()
+        sloid = datadog_json["sloId"]
+        status = datadog_json["status"]
+        metricvalue = datadog_json["series"][0]["pointlist"][0][1]
+        threshold = datadog_json["threshold"]
+        flag_up = flag + 1
+
+        if metricname == "availability_slo_total_count":
+            text_payload = "# Type " + metricname + "guage\n" + \
+                           "# Help " + metricname + " " + metricdescription + " guage\n" + \
+                           metricname + "{sloId=\"" + sloid + "\", status=\"" + status + "\"} " + str(
+                metricvalue) + "\n" + \
+                           "# EOF\n"
+            print(text_payload)
+        if len(test_metrics) == flag_up:
+            for data in modified_json:
+                total_count = 0.0
+                failure_count = 0.0
+                if data["series"][0]["pointlist"][0][1] != 0.0:
+                    print("condition")
+                    print(data["series"][0]["pointlist"][0][1])
+                    total_count = 1.0
+                    if data["series"][0]["pointlist"][0][1] != 0.0 >= float(data["threshold"]):
+                        failure_count = 1.0
+                print("finally to print failure")
+
+                failure_payload = "# TYPE availability_failure_slo_count gauge\n" + \
+                                  "# HELP availability_failure_slo_count Latency S1o failure count gauge \n" + \
+                                  "availability_failure_slo_count{sloId=\"" + data["sloId"] + "\", status=\"" + \
+                                  data[
+                                      "status"] + "\"} " + str(
+                    failure_count) + "\n" + \
+                                  "# EOF\n"
+                print(text_payload)
+                print(failure_payload)
+
+        return ""
+
+    except requests.exceptions.HTTPError as error:
+        log.error("HTTP Error" + str(error.response.status_code))
+        return ""
+    except requests.exceptions.RequestException as error:
+        log.error("Request Exception - " + str(error))
+        return ""
+    except Exception as error:
+        log.error("Exception-------" + str(error))
+        return ""
