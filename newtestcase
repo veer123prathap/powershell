@@ -1,0 +1,41 @@
+import pytest
+import mock
+from unittest.mock import Mock
+
+from src.datadog_slo_extract import DatadogSloExtract
+
+def test_post_to_SREPushGateway_availability_slo_total_count():
+    # Create an instance of the class
+    obj = DatadogSloExtract()
+    mock_print = Mock()
+
+    # Mock the necessary inputs
+    mock_datadog_json = {
+        "metricname": "availability_slo_total_count",
+        "sloId": "123456",
+        "status": "OK",
+        "series": [
+            {
+                "pointlist": [
+                    [1558227323.261, 1.0]
+                ]
+            }
+        ],
+        "threshold": 0.5  # Add the threshold attribute
+    }
+    mock_modified_json = []
+    mock_flag = 1
+
+    # Mock the print function
+    mock_print = mock.Mock()
+    with mock.patch("builtins.print", mock_print):
+        # Call the function
+        obj.post_to_SREPushGateway(mock_datadog_json, mock_modified_json, mock_flag)
+
+        # Assertions
+        mock_print.assert_called_once_with(
+            "# Type availability_slo_total_countguage\n"
+            "# Help availability_slo_total_count Availability_slo_total_count guage\n"
+            "availability_slo_total_count{sloId=\"123456\", status=\"OK\"} 1.0\n"
+            "# EOF\n"
+        )
