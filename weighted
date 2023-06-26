@@ -1,0 +1,36 @@
+
+
+
+If we have 3 containers with the env:prod tag and 3 containers without the env:prod tag, and the containers with the env:prod tag have a CPU usage of 100, and the containers without the env:prod tag have a CPU usage of 50, then the 95th percentile will be 81.25.
+
+This is because the lambda.p95:cpu.usage{}.weighted() query will first calculate the 95th percentile of the CPU usage for all containers, but it will give containers with the env:prod tag a weight of 2. This means that the metric value for containers with this tag will be counted twice as often as the metric value for containers without this tag.
+
+The final 95th percentile will be calculated as follows:
+
+50% of the metric values will be from containers without the env:prod tag, with a weight of 1.
+50% of the metric values will be from containers with the env:prod tag, with a weight of 2.
+Code snippet
+(0.5 * 50) + (0.5 * 100) = 81.25
+Use code with caution. Learn more
+The final 95th percentile will be 81.25, because the metric value for the container with the env:prod tag will be counted twice as often, so it will have a higher weight.
+ou're right, we didn't use the .weighted() modifier in the previous example. If we don't use the .weighted() modifier, then the 95th percentile will be calculated as follows:
+
+50% of the metric values will be from containers without the env:prod tag, with a weight of 1.
+50% of the metric values will be from containers with the env:prod tag, with a weight of 1.
+Code snippet
+(0.5 * 50) + (0.5 * 100) = 75
+Use code with caution. Learn more
+The final 95th percentile will be 75, because the metric values for both containers will be counted equally.
+
+In this case, the .weighted() modifier would not have an impact on the 95th percentile, because the weight of each metric value is the same. However, the .weighted() modifier can be used to give more weight to certain metric values, which can be useful for a variety of purposes.
+
+The calculation was incorrect because we forgot to use the .weighted() modifier. The .weighted() modifier applies a weight to each metric value, based on the tags that are associated with the container. In this case, we wanted to give containers with the env:prod tag a weight of 2, so they would be counted twice as often as containers without the env:prod tag.
+
+If we had used the .weighted() modifier, the calculation would have been correct. The final 95th percentile would have been 81.25, because the metric value for the container with the env:prod tag would have been counted twice as often, so it would have had a higher weight.
+
+Here is the correct calculation:
+
+Code snippet
+(0.5 * 50) + (0.5 * 100 * 2) = 81.25
+Use code with caution. Learn more
+The final 95th percentile will be 81.25, because the metric value for the container with the env:prod tag will be counted twice as often, so it will have a higher weight.
