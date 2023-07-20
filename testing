@@ -1,0 +1,20 @@
+
+In the Grafana pod, three containers are running:
+
+Grafana: Responsible for serving the Grafana web application and managing dashboards.
+
+Conjur: A container that holds the Conjur application, likely used for authentication and secrets management.
+
+Data Source Updater: A custom application that fulfills the following conditions:
+
+a. It checks the readiness status of the Grafana pod to ensure it is up and running.
+
+b. Upon successful confirmation of Grafana's availability, the application retrieves cyber ark credentials from the designated CyberArk account.
+
+c. The application then verifies whether a data source already exists in Grafana.
+
+d. If the data source does not exist, the custom application creates the data source using the provided information.
+
+e. If the data source already exists, the application updates the data source with the provided information.
+
+In summary, the custom Data Source Updater application within the Grafana pod ensures Grafana's readiness, accesses CyberArk credentials, and performs actions related to data sources based on their existence in Grafana.
