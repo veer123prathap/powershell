@@ -1,0 +1,107 @@
+import requests
+import json
+
+def is_grafana_ready(grafana_url):
+  # global run_once
+  # if run_once:
+  #   print ("inside")
+  #   return True
+  # else:
+  #   run_once = True
+  #   print ("enter into run_once_false")
+    try:
+        response = requests.get(f"{grafana_url}/api/health")
+        return response.status_code == 200 and response.json().get("database") == "ok"
+    except requests.exceptions.RequestException:
+        return False
+
+def does_datasource_exist(grafana_url, api_key, datasource_name):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    response = requests.get(f"{grafana_url}/api/datasources", headers=headers)
+    if response.status_code == 200:
+        datasources = response.json()
+        for datasource in datasources:
+            if datasource.get("name") == datasource_name:
+                return True
+    return False
+
+def create_datasource(grafana_url, api_key, datasource_info):
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    response = requests.post(f"{grafana_url}/api/datasources", headers=headers, data=json.dumps(datasource_info))
+    return response.status_code == 200
+
+def update_datasource(grafana_url, api_key, datasource_id, datasource_info):
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    response = requests.put(f"{grafana_url}/api/datasources/{datasource_id}", headers=headers, data=json.dumps(datasource_info))
+    return response.status_code == 200
+
+def get_datasource_id(grafana_url, api_key, datasource_name):
+    headers = {"Authorization": f"Bearer {api_key}"}
+    response = requests.get(f"{grafana_url}/api/datasources", headers=headers)
+    if response.status_code == 200:
+        datasources = response.json()
+        for datasource in datasources:
+            if datasource.get("name") == datasource_name:
+                return datasource.get("id")
+    return None
+
+def main():
+  global run_once
+  if run_once:
+    print ("inside")
+    return True
+  else:
+    run_once = True
+    print ("enter into run_once_false")
+    grafana_url = "ht0"
+    
+    grafana_api_key = ""
+    datasources_info = [
+     {
+      "name": "prom17",
+      "type": "prometheus",
+      "url": "http://198.199.71.226:300/",
+      "access": "proxy",
+      "jsonData": {
+        "username": "your_username_1",
+        "password": "your_password_1"
+       }
+      },
+      {
+      "name": "MySQL",
+      "type": "mysql",
+      "url": "localhost:3306",
+      "user": "grafana",
+      
+      "access": "proxy",
+      "jsonData": {
+        "database": "grafana",
+      "secureJsonData":{
+        "password": "test"
+      }
+      }
+    }
+    ]
+
+    if is_grafana_ready(grafana_url):
+
+        for datasource_info in datasources_info:
+            datasource_name = datasource_info["name"]
+
+            if does_datasource_exist(grafana_url, grafana_api_key, datasource_name):
+                datasource_id = get_datasource_id(grafana_url, grafana_api_key, datasource_name)
+                if update_datasource(grafana_url, grafana_api_key, datasource_id, datasource_info):
+                    print(f"Data source '{datasource_name}' updated successfully.")
+                else:
+                    print(f"Error updating data source '{datasource_name}'.")
+            else:
+                if create_datasource(grafana_url, grafana_api_key, datasource_info):
+                    print(f"Data source '{datasource_name}' created successfully.")
+                else:
+                    print(f"Error creating data source '{datasource_name}'.")
+    else:
+        print("Grafana is not ready.")
+
+if __name__ == "__main__":
+    run_once = True
+    main()
