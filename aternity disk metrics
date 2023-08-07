@@ -1,0 +1,7 @@
+Aternity collects the following disk metrics:
+
+Disk Queue Length: This metric shows the number of I/O requests that are waiting to be processed by the disk. A high queue length can indicate that the disk is overloaded and may be causing performance problems.
+Disk Read Rate: This metric shows the rate at which data is being read from the disk. A high read rate can indicate that the disk is being heavily used, such as when a user is transferring large files or running a resource-intensive application.
+Disk Write Rate: This metric shows the rate at which data is being written to the disk. A high write rate can indicate that the disk is being heavily used, such as when a user is installing a new application or creating a large file.
+Disk Transfer Rate: This metric shows the total rate at which data is being transferred to and from the disk. This is a combination of the read and write rates.
+Disk Latency: This metric shows the average amount of time it takes for a disk to process an I/O request. A high latency can indicate that the disk is slow or that there is a problem with the disk's controller.
