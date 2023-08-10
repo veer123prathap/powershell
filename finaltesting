@@ -1,0 +1,22 @@
+    while True:
+        if is_grafana_ready(grafana_url):
+
+                for datasource_info in datasources_info:
+                    datasource_name = datasource_info["name"]
+
+                    if does_datasource_exist(grafana_url, grafana_api_key, datasource_name):
+                        datasource_id = get_datasource_id(grafana_url, grafana_api_key, datasource_name)
+                        if update_datasource(grafana_url, grafana_api_key, datasource_id, datasource_info):
+                            print(f"Data source '{datasource_name}' updated successfully.")
+                        else:
+                            print(f"Error updating data source '{datasource_name}'.")
+                    else:
+                        if create_datasource(grafana_url, grafana_api_key, datasource_info):
+                            print(f"Data source '{datasource_name}' created successfully.")
+                        else:
+                            print(f"Error creating data source '{datasource_name}'.")
+                time.sleep(10)
+                count += 1
+                print(f"The counter is at {count}.")
+        else:
+            print("Grafana is not ready.")
