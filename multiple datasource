@@ -1,0 +1,46 @@
+def get_creds(paths):
+  global sql_user
+  global sql_password
+
+  creds = {}
+  for path in paths:
+    cred = envext.get_conjur_secret(path)
+    if cred.name is not None and cred.password is not None:
+      if path == 'test\chat\sql':
+        sql_user = cred.name
+        sql_password = cred.password
+      elif path == 'test\email\smtp':
+        smtp_user = cred.name
+        smtp_password = cred.password
+    creds[path] = cred
+  return creds
+
+def main():
+  paths = ['test\chat\sql', 'test\email\smtp']
+  creds = get_creds(paths)
+  print(sql_user, sql_password)
+
+if __name__ == '__main__':
+  main()
+
+------------------------------------------
+def get_cred():
+    paths = ['test\chat\sql', 'test\chat\api', 'test\chat\app']  # Add your desired paths here
+    creds = {}
+
+    for path in paths:
+        cred = envext.get_conjur_secret(path)
+        creds[path] = {'name': cred.name, 'password': cred.password}
+
+    return creds
+
+# Calling the function and accessing secrets
+secrets = get_cred()
+
+for path, cred_info in secrets.items():
+    globals()[f"{path}_name"] = cred_info['name']
+    globals()[f"{path}_password"] = cred_info['password']
+
+# Now you have variables like test\chat\sql_name, test\chat\sql_password, etc.
+print(test\chat\sql_name)
+print(test\chat\sql_password)
