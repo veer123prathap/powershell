@@ -1,0 +1,87 @@
+import pytest
+from unittest.mock import Mock, patch
+from your_module_name import (
+    is_grafana_ready,
+    does_datasource_exist,
+    create_datasource,
+    update_datasource,
+    get_datasource_id,
+)
+
+@pytest.fixture
+def mock_requests_get():
+    with patch('requests.get') as mock_get:
+        yield mock_get
+
+@pytest.fixture
+def mock_requests_post():
+    with patch('requests.post') as mock_post:
+        yield mock_post
+
+@pytest.fixture
+def mock_requests_put():
+    with patch('requests.put') as mock_put:
+        yield mock_put
+
+@pytest.fixture
+def mock_response():
+    mock_resp = Mock()
+    mock_resp.json.return_value = {}
+    return mock_resp
+
+def test_is_grafana_ready_success(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 200
+    mock_response.json.return_value = {"database": "ok"}
+
+    assert is_grafana_ready("http://fake_grafana_url")
+
+def test_is_grafana_ready_failure(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 500  # Simulate failure
+
+    assert not is_grafana_ready("http://fake_grafana_url")
+
+def test_does_datasource_exist_existing(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"name": "prom17"}, {"name": "MySQL"}]
+
+    assert does_datasource_exist("http://fake_grafana_url", "fake_api_key", "prom17")
+
+def test_does_datasource_exist_not_existing(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"name": "prom17"}, {"name": "MySQL"}]
+
+    assert not does_datasource_exist("http://fake_grafana_url", "fake_api_key", "nonexistent")
+
+def test_create_datasource_success(mock_requests_post, mock_response):
+    mock_requests_post.return_value = mock_response
+    mock_response.status_code = 200
+
+    datasource_info = {"name": "TestDataSource"}
+    assert create_datasource("http://fake_grafana_url", "fake_api_key", datasource_info)
+
+def test_update_datasource_success(mock_requests_put, mock_response):
+    mock_requests_put.return_value = mock_response
+    mock_response.status_code = 200
+
+    datasource_info = {"name": "TestDataSource"}
+    assert update_datasource("http://fake_grafana_url", "fake_api_key", "12345", datasource_info)
+
+def test_get_datasource_id_existing(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"name": "prom17", "id": "12345"}, {"name": "MySQL", "id": "67890"}]
+
+    assert get_datasource_id("http://fake_grafana_url", "fake_api_key", "prom17") == "12345"
+
+def test_get_datasource_id_not_existing(mock_requests_get, mock_response):
+    mock_requests_get.return_value = mock_response
+    mock_response.status_code = 200
+    mock_response.json.return_value = [{"name": "prom17", "id": "12345"}, {"name": "MySQL", "id": "67890"}]
+
+    assert get_datasource_id("http://fake_grafana_url", "fake_api_key", "nonexistent") is None
+if __name__ == '__main__':
+    pytest.main()
