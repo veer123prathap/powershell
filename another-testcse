@@ -1,0 +1,26 @@
+def test_calculate_next_run():
+    # Current time is 12:00 PM CST
+    current_time = time.time()
+    current_datetime = datetime.datetime.utcfromtimestamp(current_time)
+
+    # Expected next run time is 5:00 AM CST the next day
+    expected_next_run_datetime = current_datetime_cst + datetime.timedelta(days=1)
+    expected_next_run_time_string = expected_next_run_datetime.isoformat()
+
+    # Calculate the next run time
+    next_run_time_string = calculate_next_run()
+
+    assert next_run_time_string == expected_next_run_time_string
+
+    # Current time is 4:59 AM CST
+    current_time = time.time()
+    current_datetime = datetime.datetime.utcfromtimestamp(current_time)
+
+    # Expected next run time is 5:00 AM CST the same day
+    expected_next_run_datetime = current_datetime_cst
+    expected_next_run_time_string = expected_next_run_datetime.isoformat()
+
+    # Calculate the next run time
+    next_run_time_string = calculate_next_run()
+
+    assert next_run_time_string == expected_next_run_time_string
