@@ -1,0 +1,155 @@
+import requests    # Import requests library to make HTTP requests
+import json    # Import json library to read json file
+import base64    # Import base64 library to encode/decode binary data
+import time    # Import time library to perform time related operations
+import datetime    # Import datetime library to perform date and time related operations
+import pytz    # Import pytz library to convert time zones
+import json    # Import json library to read json file
+sys.path.append(os.path.dirname(os.path.abspath(__file__))    # appending file path to sys path
+                
+import envext    # Import envext library
+
+requests.packages.urllib3.disable_warnings()    # Disable urllib3 warnings
+
+def calculate_next_run(next_run_datetime=None):    # Defining function "calculate_next_run"
+    global next_run_time_string    # declare next_run_time_string as global variable
+    # Current time is 12:00 PM CST    #
+    current_time = time.time()    # get current time
+    current_datetime = datetime.datetime.utcfromtimestamp(current_time)    # convert time to datetime
+    cst_timezone = pytz.timezone('US/Central')    # set time zone to 'US/Central'
+    current_datetime_cst = current_datetime.astimezone.replace(tzinfo=pytz.utc).astimezone(cst)    # convert time to CST time zone
+
+    next_run_datetime = current_datetime_cst.replace(hour=5, minute=0, second=0)    # 
+    next_run_time = next_run_datetime.time()
+    current_datetime_cst_time = current_datetime_cst.time()
+    if current_datetime_cst_time >= next_run_time:
+         next_run_datetime += datetime.timedelta(days=1)
+    time_untill_next_run = (next_run_datetime - current_datetime_cst).total_seconds()
+    next_run_time_string = next_run_datetime.isoformat()
+    return time_untill_next_run    # Return time until next run
+
+def get_credentials():    # Defining function "get_credentials"
+    global sql_user    # declare sql_user as global variable
+    global sql_password    # declare sql_password as global variable
+    paths = ['veera/test']    # path to the test file
+    creds = {}
+    for path in paths:    # iterate through paths
+        cred = envext.get_conjur_secret(path)    # get conjur secret for path
+        if cred.username is not None  or cred.password is not None:    # check if username or password is not none
+            if path = 'veera/test'    # check if path matches with test file
+                sql_user = cred.username    # assign value of username to sql_user
+                sql_password = cred.password    # assign value of password to sql_password
+            else:
+            
+            creds[path] = credits    # assign value of creds to credits
+    return creds    # return creds
+
+
+
+
+
+def is_grafana_ready(grafana_url):    # Defining function "is_grafana_ready"
+    try:
+        response = requests.get(f"{grafana_url}/api/health")    # perform request to grafana_url
+        return response.status_code == 200 and response.json().get("database") == "ok"    # Check if status_code is 200 and response database is "ok"
+    except requests.exceptions.RequestException:    # Exception Handling
+        return False    # return false
+
+def does_datasource_exist(grafana_url, api_key, datasource_name):    # Defining function "does_datasource_exist"
+    headers = {"Authorization": f"Bearer {api_key}"}    # Authorization header
+    response = requests.get(f"{grafana_url}/api/datasources", headers=headers)    # request to get datasources
+    if response.status_code == 200:    # check if status code is 200
+        datasources = response.json()    # get json response
+        for datasource in datasources:    # iterate through datasources
+            if datasource.get("name") == datasource_name:    # check if name of datasource is same as datasource_name
+                return True    # return true
+    return False    # return false
+
+def create_datasource(grafana_url, api_key, datasource_info):    # Defining function "create_datasource"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}    # Authorization and Content-Type headers
+    response = requests.post(f"{grafana_url}/api/datasources", headers=headers, data=json.dumps(datasource_info))    # request to create datasource
+    return response.status_code == 200    # check if status code is 200
+
+def update_datasource(grafana_url, api_key, datasource_id, datasource_info):    # Defining function "update_datasource"
+    headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}    # Authorization and Content-Type headers
+    response = requests.put(f"{grafana_url}/api/datasources/{datasource_id}", headers=headers, data=json.dumps(datasource_info))    # update datasource
+    return response.status_code == 200    # check if status code is 200
+
+def get_datasource_id(grafana_url, api_key, datasource_name):    # Defining function "get_datasource_id"
+    headers = {"Authorization": f"Bearer {api_key}"}    # Authorization header
+    response = requests.get(f"{grafana_url}/api/datasources", headers=headers)    # request to get datasources
+    if response.status_code == 200:    # check if status code is 200
+        datasources = response.json()    # get json response
+        for datasource in datasources:    # iterate through datasources
+            if datasource.get("name") == datasource_name:    # check if name of datasource is same as datasource_name
+                return datasource.get("id")    # return id of datasource
+    return None    # return null
+
+
+
+def main():    # Main function
+    """
+    Main function.
+
+    """    # Function docstring
+    global mssql_database_user    # Global variable mssql_database_user
+    global mssql_database_pass    # Global variable mssql_database_pass
+    retries = 0    # Initialize retries with 0
+    max_retries = 3    # Initialize max_retries with 3
+    retry_interval = 180    # Initialize retry_interval with 180
+
+    grafana_url = "http://localhost:3000"    # Initialize grafana_url with "http://localhost:3000"
+    
+    grafana_api_key = "api_key"    # Initialize grafana_api_key with "api_key"
+    get_credentials()    # Call get_credentials() function
+    mssql_database_user = "veera" + sql_user    # Assign the value to mssql_database_user variable
+    msql_database_pass = sql_password    # Assign the value to msql_database_pass variable
+    datasources_info = [
+
+      {
+      "name": "MySQL",
+      "type": "mysql",
+      "url": "localhost:3306",
+      "user": "grafana",
+      
+      "access": "proxy",
+      "jsonData": {
+        "database": "grafana",
+      "secureJsonData":{
+        "password": "test"
+      }
+      }
+    }
+    ]    # Initialize datasources_info with given data
+    while True:    # Start while loop
+       while retries <  max_retries:    # Start while loop
+            if is_grafana_ready(grafana_url):    # Check if grafana is ready
+
+                for datasource_info in datasources_info:    # Start for loop
+                    datasource_name = datasource_info["name"]    # Assign value to datasource_name
+                    if does_datasource_exist(grafana_url, grafana_api_key, datasource_name):    # Check if datasource exist
+                        datasource_id = get_datasource_id(grafana_url, grafana_api_key, datasource_name)    # Get the datasource id
+                        if update_datasource(grafana_url, grafana_api_key, datasource_id, datasource_info):    # Update datasource
+                            print(f"Data source '{datasource_name}' updated successfully.")    # Print message on console
+                        else:
+                            print(f"Error updating data source '{datasource_name}'.")    # Print message on console
+                    else:
+                        if create_datasource(grafana_url, grafana_api_key, datasource_info):    # Create datasource
+                            print(f"Data source '{datasource_name}' created successfully.")    # Print message on console
+                        else:
+                            print(f"Error creating data source '{datasource_name}'.")    # Print message on console
+                time_untill_next_run = calculate_next_run()    # Calculate time untill next run
+                spleep_duration = time_untill_next_run    # Sleep duration
+                if spleep_duration >0:
+                    time.sleep(spleep_duration)    # Sleep for given time
+            else:
+              retries += 1    # Increment retries
+              if retries < max_retries:
+                 time.sleep(retry_interval)    # Sleep for given time
+              else:
+                break    # Break the loop
+
+
+if __name__ == "__main__":
+    main()    # Call main() function
+ 
